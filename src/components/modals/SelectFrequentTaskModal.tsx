@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 import type { FrequentTask } from '@/types';
@@ -15,18 +16,34 @@ export const SelectFrequentTaskModal = ({
   frequentTasks,
   onSelect,
 }: SelectFrequentTaskModalProps) => {
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-up max-h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+    <div
+      className="fixed inset-0 z-[9999] flex justify-center items-center"
+      style={{ touchAction: 'none' }}
+    >
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-[calc(100%-2rem)] max-w-md p-6 mx-4 flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - 4rem)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <h2 className="text-lg font-bold text-slate-800">よくあるタスクから選択</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-800">
             <Icon name="fa-times" size={20} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-1">
           {frequentTasks.length > 0 ? (
             <ul className="space-y-2">
               {frequentTasks.map((task) => (
@@ -63,7 +80,7 @@ export const SelectFrequentTaskModal = ({
             </p>
           )}
         </div>
-        <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+        <div className="mt-4 pt-4 border-t border-slate-100 text-center flex-shrink-0">
           <button onClick={onClose} className="text-slate-500 text-sm hover:text-slate-700">
             閉じる
           </button>

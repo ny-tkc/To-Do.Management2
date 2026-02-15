@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 import type { Visit } from '@/types';
@@ -12,6 +12,14 @@ interface RecentTasksModalProps {
 
 export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: RecentTasksModalProps) => {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
 
   const recentTasks = useMemo(() => {
     if (!isOpen) return [];
@@ -33,6 +41,11 @@ export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: Rec
   }, [isOpen, allVisits]);
 
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    setSelectedTasks(new Set());
+    onClose();
+  };
 
   const toggleTask = (text: string) => {
     setSelectedTasks((prev) => {
@@ -56,12 +69,20 @@ export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: Rec
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4" onClick={(e) => { if (e.target === e.currentTarget) { setSelectedTasks(new Set()); onClose(); } }}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-up max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[9999] flex justify-center items-center"
+      style={{ touchAction: 'none' }}
+    >
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={handleClose} />
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-[calc(100%-2rem)] max-w-md p-6 mx-4 flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - 4rem)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 className="text-lg font-bold text-slate-800 mb-1">最近のタスクから追加</h2>
         <p className="text-xs text-slate-500 mb-3">追加したいタスクを選択してください</p>
 
-        <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain space-y-1 mb-4 -mx-2 px-2">
           {recentTasks.length === 0 ? (
             <p className="text-center text-slate-400 py-8 text-sm">過去のタスクがありません</p>
           ) : (
@@ -91,9 +112,9 @@ export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: Rec
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-shrink-0">
           <button
-            onClick={() => { setSelectedTasks(new Set()); onClose(); }}
+            onClick={handleClose}
             className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition"
           >
             キャンセル
