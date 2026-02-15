@@ -35,7 +35,6 @@ export const BottomNav = ({ activePage, setActivePage }: BottomNavProps) => {
       <NavItem page="calendar" activePage={activePage} setActivePage={setActivePage} icon="fa-calendar-days" label="カレンダー" />
       <NavItem page="rate" activePage={activePage} setActivePage={setActivePage} icon="fa-chart-pie" label="面談率" />
       <NavItem page="history" activePage={activePage} setActivePage={setActivePage} icon="fa-history" label="履歴" />
-      <NavItem page="master" activePage={activePage} setActivePage={setActivePage} icon="fa-cog" label="設定" />
     </nav>
   );
 };

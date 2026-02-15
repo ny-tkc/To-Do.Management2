@@ -11,6 +11,7 @@ import { ReportModal } from '@/components/modals/ReportModal';
 import { SimpleReportModal } from '@/components/modals/SimpleReportModal';
 import { ChangeDateModal } from '@/components/modals/ChangeDateModal';
 import { UnscheduledTasksModal } from '@/components/modals/UnscheduledTasksModal';
+import { BackupModal } from '@/components/modals/BackupModal';
 
 import { TodayPage } from '@/pages/TodayPage';
 import { CalendarPage } from '@/pages/CalendarPage';
@@ -31,6 +32,7 @@ export const App = () => {
   const [isSimpleReportModalOpen, setIsSimpleReportModalOpen] = useState(false);
   const [isChangeDateModalOpen, setIsChangeDateModalOpen] = useState(false);
   const [isUnscheduledModalOpen, setIsUnscheduledModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
 
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -46,6 +48,15 @@ export const App = () => {
     if (loadedVisits) setVisits(JSON.parse(loadedVisits));
     if (loadedFreq) setFrequentTasks(JSON.parse(loadedFreq));
     if (loadedCarried) setCarriedOverTodos(JSON.parse(loadedCarried));
+
+    // Daily backup prompt
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const lastBackupPrompt = localStorage.getItem('lastBackupPromptDate');
+    if (lastBackupPrompt !== todayStr) {
+      localStorage.setItem('lastBackupPromptDate', todayStr);
+      // Delay to let data load first
+      setTimeout(() => setIsBackupModalOpen(true), 500);
+    }
   }, []);
 
   // Save Data
@@ -284,7 +295,7 @@ export const App = () => {
   };
 
   // Render Helpers
-  const renderVisits = (visitList: Visit[], showDate = false) => {
+  const renderVisitCards = (visitList: Visit[], showDate = false) => {
     return visitList.map((visit) => (
       <VisitCard
         key={visit.id}
@@ -297,6 +308,7 @@ export const App = () => {
         onDeleteVisit={deleteVisit}
         onChangeDate={openChangeDate}
         frequentTasks={frequentTasks}
+        allVisits={visits}
         showDate={showDate}
       />
     ));
@@ -307,22 +319,20 @@ export const App = () => {
       <header className="bg-cyan-700 text-white p-4 shadow-md sticky top-0 z-40 pb-safe">
         <div className="container mx-auto max-w-4xl flex justify-between items-center">
           <h1 className="text-xl font-bold">訪問活動管理</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setIsUnscheduledModalOpen(true)}
-              className="text-cyan-100 hover:text-white"
-              title="未定ToDo"
-            >
-              <Icon name="fa-inbox" size={20} />
-            </button>
-          </div>
+          <button
+            onClick={() => setActivePage('master')}
+            className={`text-cyan-100 hover:text-white transition ${activePage === 'master' ? 'text-white' : ''}`}
+            title="設定"
+          >
+            <Icon name="fa-gear" size={20} />
+          </button>
         </div>
       </header>
 
       <main className="pb-safe">
         {activePage === 'today' && (
           <TodayPage
-            visits={renderVisits(getTodayVisits())}
+            visits={renderVisitCards(getTodayVisits())}
             onAddVisit={() => {
               setSelectedDate(new Date().toISOString().slice(0, 10));
               setIsAddVisitModalOpen(true);
@@ -332,46 +342,36 @@ export const App = () => {
         )}
 
         {activePage === 'calendar' && (
-          <CalendarPage
-            visits={visits}
-            onDateSelect={(date) => setSelectedDate(date)}
-            selectedDate={selectedDate}
-          />
-        )}
-        {activePage === 'calendar' && (
-          <div className="container mx-auto px-4 max-w-4xl -mt-4">
-            <div className="space-y-4 pb-4">
-              {renderVisits(visits.filter((v) => v.date === selectedDate))}
+          <>
+            <CalendarPage
+              visits={visits}
+              onDateSelect={(date) => setSelectedDate(date)}
+              selectedDate={selectedDate}
+              onOpenUnscheduledTasks={() => setIsUnscheduledModalOpen(true)}
+            />
+            <div className="container mx-auto px-4 max-w-4xl">
+              <button
+                onClick={() => setIsAddVisitModalOpen(true)}
+                className="w-full py-3 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 border-2 border-dashed border-slate-300 font-bold mt-4"
+              >
+                <Icon name="fa-plus" className="mr-2" />
+                {new Date(selectedDate).toLocaleDateString()} に訪問を追加
+              </button>
+              <div className="space-y-4 py-4">
+                {renderVisitCards(visits.filter((v) => v.date === selectedDate))}
+              </div>
             </div>
-            <button
-              onClick={() => setIsAddVisitModalOpen(true)}
-              className="w-full py-3 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 border-2 border-dashed border-slate-300 font-bold"
-            >
-              <Icon name="fa-plus" className="mr-2" />
-              {new Date(selectedDate).toLocaleDateString()} に訪問を追加
-            </button>
-          </div>
+          </>
         )}
 
         {activePage === 'rate' && <RatePage firms={firms} visits={visits} />}
 
         {activePage === 'history' && (
-          <div className="container mx-auto px-4 py-6 max-w-4xl">
-            <HistoryPage
-              visits={visits}
-              onGenerateReport={openReport}
-              onRevertCompleteVisit={revertCompleteVisit}
-            />
-            <div className="space-y-4 mt-4">
-              {renderVisits(
-                visits
-                  .filter((v) => v.status === 'completed')
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .slice(0, 20),
-                true
-              )}
-            </div>
-          </div>
+          <HistoryPage
+            visits={visits}
+            firms={firms}
+            renderVisitCards={(filteredVisits) => renderVisitCards(filteredVisits, true)}
+          />
         )}
 
         {activePage === 'master' && (
@@ -407,6 +407,7 @@ export const App = () => {
         date={selectedDate}
         carriedOverTodos={carriedOverTodos}
         frequentTasks={frequentTasks}
+        allVisits={visits}
       />
 
       <ReportModal
@@ -436,6 +437,12 @@ export const App = () => {
         firms={firms}
         carriedOverTodos={carriedOverTodos}
         onUpdateCarriedOverTodos={updateCarriedOverTodos}
+      />
+
+      <BackupModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        onBackup={exportData}
       />
     </div>
   );

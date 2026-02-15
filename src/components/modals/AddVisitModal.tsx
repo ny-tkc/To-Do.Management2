@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '@/components/Icon';
 import { SelectFrequentTaskModal } from './SelectFrequentTaskModal';
-import type { Firm, FrequentTask, CarriedOverTodos } from '@/types';
+import { RecentTasksModal } from './RecentTasksModal';
+import type { Firm, FrequentTask, CarriedOverTodos, Visit } from '@/types';
 
 interface AddVisitModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface AddVisitModalProps {
   date: string;
   carriedOverTodos: CarriedOverTodos;
   frequentTasks: FrequentTask[];
+  allVisits: Visit[];
 }
 
 export const AddVisitModal = ({
@@ -26,6 +28,7 @@ export const AddVisitModal = ({
   date,
   carriedOverTodos,
   frequentTasks,
+  allVisits,
 }: AddVisitModalProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFirm, setSelectedFirm] = useState<Firm | null>(null);
@@ -35,8 +38,20 @@ export const AddVisitModal = ({
   const [showResults, setShowResults] = useState(false);
   const [isClientVisit, setIsClientVisit] = useState(false);
   const [isFreqModalOpen, setIsFreqModalOpen] = useState(false);
+  const [isRecentModalOpen, setIsRecentModalOpen] = useState(false);
   const [expandedTodoIndex, setExpandedTodoIndex] = useState<number | null>(null);
+  const [autocompleteFocusIndex, setAutocompleteFocusIndex] = useState<number | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const pastTaskNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const visit of allVisits) {
+      for (const todo of visit.todos) {
+        if (todo.text.trim()) names.add(todo.text.trim());
+      }
+    }
+    return Array.from(names);
+  }, [allVisits]);
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +61,7 @@ export const AddVisitModal = ({
       setShowResults(false);
       setIsClientVisit(false);
       setExpandedTodoIndex(null);
+      setAutocompleteFocusIndex(null);
     }
   }, [isOpen]);
 
@@ -85,6 +101,12 @@ export const AddVisitModal = ({
       .slice(0, 10);
   }, [isOpen, searchQuery, firms, selectedFirm]);
 
+  const getAutocompleteSuggestions = (text: string) => {
+    if (!text || text.length < 1) return [];
+    const lower = text.toLowerCase();
+    return pastTaskNames.filter((name) => name.toLowerCase().includes(lower) && name !== text).slice(0, 5);
+  };
+
   if (!isOpen) return null;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +125,14 @@ export const AddVisitModal = ({
     const newTodos = [...todos];
     newTodos[index].text = value;
     setTodos(newTodos);
+    setAutocompleteFocusIndex(index);
+  };
+
+  const handleSelectAutocomplete = (index: number, value: string) => {
+    const newTodos = [...todos];
+    newTodos[index].text = value;
+    setTodos(newTodos);
+    setAutocompleteFocusIndex(null);
   };
 
   const handleSubTasksChange = (index: number, textBlock: string) => {
@@ -137,6 +167,11 @@ export const AddVisitModal = ({
     } else {
       setTodos([...todos, newItem]);
     }
+  };
+
+  const handleAddRecentTasks = (tasks: { text: string; subTasks: { text: string }[] }[]) => {
+    const emptyFiltered = todos.filter((t) => t.text.trim() !== '');
+    setTodos([...emptyFiltered, ...tasks, { text: '', subTasks: [] }]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -210,67 +245,97 @@ export const AddVisitModal = ({
           <div>
             <div className="flex justify-between items-end mb-1">
               <label className="block text-sm font-medium text-slate-700">ToDoリスト</label>
-              <button
-                type="button"
-                onClick={() => setIsFreqModalOpen(true)}
-                className="text-xs text-cyan-600 hover:text-cyan-800 font-semibold border border-cyan-200 bg-cyan-50 px-2 py-1 rounded"
-              >
-                <Icon name="fa-star" className="mr-1" size={12} />
-                よくあるタスク
-              </button>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsRecentModalOpen(true)}
+                  className="text-xs text-slate-600 hover:text-slate-800 font-semibold border border-slate-200 bg-slate-50 px-2 py-1 rounded"
+                >
+                  <Icon name="fa-clock-rotate-left" className="mr-1" size={12} />
+                  最近のタスク
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFreqModalOpen(true)}
+                  className="text-xs text-cyan-600 hover:text-cyan-800 font-semibold border border-cyan-200 bg-cyan-50 px-2 py-1 rounded"
+                >
+                  <Icon name="fa-star" className="mr-1" size={12} />
+                  よくあるタスク
+                </button>
+              </div>
             </div>
             <div className="space-y-3">
-              {todos.map((todo, index) => (
-                <div key={index} className="bg-slate-50 p-2 rounded border border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={todo.text}
-                      onChange={(e) => handleTodoChange(index, e.target.value)}
-                      placeholder={`ToDo ${index + 1}`}
-                      className="flex-grow px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-cyan-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedTodoIndex(expandedTodoIndex === index ? null : index)
-                      }
-                      className={`w-8 h-8 flex-shrink-0 rounded transition ${
-                        expandedTodoIndex === index
-                          ? 'bg-cyan-100 text-cyan-700'
-                          : 'text-slate-400 hover:text-cyan-600'
-                      }`}
-                      title="詳細を追加"
-                    >
-                      <Icon name="fa-list-ul" size={16} />
-                    </button>
-                    {todos.length > 1 && (
+              {todos.map((todo, index) => {
+                const suggestions = autocompleteFocusIndex === index ? getAutocompleteSuggestions(todo.text) : [];
+                return (
+                  <div key={index} className="bg-slate-50 p-2 rounded border border-slate-200">
+                    <div className="flex items-center gap-2 relative">
+                      <div className="flex-grow relative">
+                        <input
+                          type="text"
+                          value={todo.text}
+                          onChange={(e) => handleTodoChange(index, e.target.value)}
+                          onFocus={() => setAutocompleteFocusIndex(index)}
+                          onBlur={() => setTimeout(() => setAutocompleteFocusIndex(null), 200)}
+                          placeholder={`ToDo ${index + 1}`}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-cyan-500"
+                        />
+                        {suggestions.length > 0 && (
+                          <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                            {suggestions.map((s, si) => (
+                              <li
+                                key={si}
+                                onMouseDown={() => handleSelectAutocomplete(index, s)}
+                                className="px-3 py-2 hover:bg-cyan-50 cursor-pointer text-sm"
+                              >
+                                {s}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveTodoInput(index)}
-                        className="w-8 h-8 flex-shrink-0 text-slate-400 hover:text-red-500 transition"
+                        onClick={() =>
+                          setExpandedTodoIndex(expandedTodoIndex === index ? null : index)
+                        }
+                        className={`w-8 h-8 flex-shrink-0 rounded transition ${
+                          expandedTodoIndex === index
+                            ? 'bg-cyan-100 text-cyan-700'
+                            : 'text-slate-400 hover:text-cyan-600'
+                        }`}
+                        title="詳細を追加"
                       >
-                        <Icon name="fa-minus-circle" size={16} />
+                        <Icon name="fa-list-ul" size={16} />
                       </button>
+                      {todos.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTodoInput(index)}
+                          className="w-8 h-8 flex-shrink-0 text-slate-400 hover:text-red-500 transition"
+                        >
+                          <Icon name="fa-minus-circle" size={16} />
+                        </button>
+                      )}
+                    </div>
+                    {(expandedTodoIndex === index ||
+                      (todo.subTasks && todo.subTasks.length > 0)) && (
+                      <div className="mt-2 pl-4 border-l-2 border-cyan-100 animate-fade-in-up">
+                        <label className="text-xs text-slate-500 block mb-1">
+                          詳細項目 (改行で区切りで入力)
+                        </label>
+                        <textarea
+                          value={todo.subTasks.map((s) => s.text).join('\n')}
+                          onChange={(e) => handleSubTasksChange(index, e.target.value)}
+                          className="w-full p-2 text-sm border border-slate-300 rounded focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                          rows={3}
+                          placeholder={'例：〇〇資料の回収\n次回の提案'}
+                        />
+                      </div>
                     )}
                   </div>
-                  {(expandedTodoIndex === index ||
-                    (todo.subTasks && todo.subTasks.length > 0)) && (
-                    <div className="mt-2 pl-4 border-l-2 border-cyan-100 animate-fade-in-up">
-                      <label className="text-xs text-slate-500 block mb-1">
-                        詳細項目 (改行で区切りで入力)
-                      </label>
-                      <textarea
-                        value={todo.subTasks.map((s) => s.text).join('\n')}
-                        onChange={(e) => handleSubTasksChange(index, e.target.value)}
-                        className="w-full p-2 text-sm border border-slate-300 rounded focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                        rows={3}
-                        placeholder={'例：〇〇資料の回収\n次回の提案'}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
             <button
               type="button"
@@ -305,6 +370,13 @@ export const AddVisitModal = ({
           onClose={() => setIsFreqModalOpen(false)}
           frequentTasks={frequentTasks}
           onSelect={handleSelectFrequentTask}
+        />
+
+        <RecentTasksModal
+          isOpen={isRecentModalOpen}
+          onClose={() => setIsRecentModalOpen(false)}
+          allVisits={allVisits}
+          onAddTasks={handleAddRecentTasks}
         />
       </div>
     </div>

@@ -1,0 +1,16 @@
+{
+  "name": "訪問活動管理ツール",
+  "short_name": "訪問管理",
+  "start_url": "/To-Do.Management2/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0e7490",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

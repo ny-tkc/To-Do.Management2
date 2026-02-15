@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Icon } from '@/components/Icon';
 import { SelectFrequentTaskModal } from '@/components/modals/SelectFrequentTaskModal';
+import { RecentTasksModal } from '@/components/modals/RecentTasksModal';
 import type { Visit, FrequentTask } from '@/types';
 
 interface VisitCardProps {
@@ -13,6 +14,7 @@ interface VisitCardProps {
   onDeleteVisit: (visitId: string) => void;
   onChangeDate: (visit: Visit) => void;
   frequentTasks: FrequentTask[];
+  allVisits?: Visit[];
   showCompleteButton?: boolean;
   showDate?: boolean;
   hideStatusBadge?: boolean;
@@ -28,6 +30,7 @@ export const VisitCard = ({
   onDeleteVisit,
   onChangeDate,
   frequentTasks,
+  allVisits = [],
   showCompleteButton = true,
   showDate = false,
   hideStatusBadge = false,
@@ -36,8 +39,26 @@ export const VisitCard = ({
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingTodoText, setEditingTodoText] = useState('');
   const [isFreqModalOpen, setIsFreqModalOpen] = useState(false);
+  const [isRecentModalOpen, setIsRecentModalOpen] = useState(false);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
   const isCompleted = visit.status === 'completed';
   const isClientVisit = visit.firmName.includes('関与先');
+
+  const pastTaskNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const v of allVisits) {
+      for (const todo of v.todos) {
+        if (todo.text.trim()) names.add(todo.text.trim());
+      }
+    }
+    return Array.from(names);
+  }, [allVisits]);
+
+  const autocompleteSuggestions = useMemo(() => {
+    if (!showAutocomplete || !newTodoText || newTodoText.length < 1) return [];
+    const lower = newTodoText.toLowerCase();
+    return pastTaskNames.filter((name) => name.toLowerCase().includes(lower) && name !== newTodoText).slice(0, 5);
+  }, [showAutocomplete, newTodoText, pastTaskNames]);
 
   const handleAddTodo = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -53,6 +74,7 @@ export const VisitCard = ({
     const updatedVisit = { ...visit, todos: [...visit.todos, newTodo] };
     onUpdateVisit(updatedVisit);
     setNewTodoText('');
+    setShowAutocomplete(false);
   };
 
   const handleSelectFrequentTask = (taskObj: FrequentTask) => {
@@ -70,6 +92,23 @@ export const VisitCard = ({
       subTasks,
     };
     const updatedVisit = { ...visit, todos: [...visit.todos, newTodo] };
+    onUpdateVisit(updatedVisit);
+  };
+
+  const handleAddRecentTasks = (tasks: { text: string; subTasks: { text: string }[] }[]) => {
+    const newTodos = tasks.map((t, i) => ({
+      id: `${Date.now()}_${i}`,
+      text: t.text,
+      completed: false,
+      completedAt: null,
+      details: '',
+      subTasks: (t.subTasks || []).map((s, si) => ({
+        id: `${Date.now()}_${i}_sub_${si}`,
+        text: s.text,
+        completed: false,
+      })),
+    }));
+    const updatedVisit = { ...visit, todos: [...visit.todos, ...newTodos] };
     onUpdateVisit(updatedVisit);
   };
 
@@ -236,14 +275,31 @@ export const VisitCard = ({
         ))}
         {!isCompleted && (
           <div className="pt-2">
-            <form onSubmit={handleAddTodo} className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={newTodoText}
-                onChange={(e) => setNewTodoText(e.target.value)}
-                placeholder="ToDoを追加..."
-                className="flex-grow px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition min-w-0"
-              />
+            <form onSubmit={handleAddTodo} className="flex gap-2 mb-2 relative">
+              <div className="flex-grow relative">
+                <input
+                  type="text"
+                  value={newTodoText}
+                  onChange={(e) => { setNewTodoText(e.target.value); setShowAutocomplete(true); }}
+                  onFocus={() => setShowAutocomplete(true)}
+                  onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
+                  placeholder="ToDoを追加..."
+                  className="w-full px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                />
+                {autocompleteSuggestions.length > 0 && (
+                  <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {autocompleteSuggestions.map((s, i) => (
+                      <li
+                        key={i}
+                        onMouseDown={() => { setNewTodoText(s); setShowAutocomplete(false); }}
+                        className="px-3 py-2 hover:bg-cyan-50 cursor-pointer text-sm"
+                      >
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <button
                 type="submit"
                 className="flex-shrink-0 w-10 h-10 bg-cyan-600 text-white rounded-full hover:bg-cyan-700 disabled:bg-slate-400 transition flex items-center justify-center"
@@ -251,14 +307,24 @@ export const VisitCard = ({
                 <Icon name="fa-plus" size={16} />
               </button>
             </form>
-            <button
-              type="button"
-              onClick={() => setIsFreqModalOpen(true)}
-              className="text-xs text-cyan-600 hover:text-cyan-800 font-semibold flex items-center"
-            >
-              <Icon name="fa-star" className="mr-1" size={12} />
-              よくあるタスクから追加
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRecentModalOpen(true)}
+                className="text-xs text-slate-600 hover:text-slate-800 font-semibold flex items-center"
+              >
+                <Icon name="fa-clock-rotate-left" className="mr-1" size={12} />
+                最近のタスク
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFreqModalOpen(true)}
+                className="text-xs text-cyan-600 hover:text-cyan-800 font-semibold flex items-center"
+              >
+                <Icon name="fa-star" className="mr-1" size={12} />
+                よくあるタスク
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -296,6 +362,13 @@ export const VisitCard = ({
         onClose={() => setIsFreqModalOpen(false)}
         frequentTasks={frequentTasks}
         onSelect={handleSelectFrequentTask}
+      />
+
+      <RecentTasksModal
+        isOpen={isRecentModalOpen}
+        onClose={() => setIsRecentModalOpen(false)}
+        allVisits={allVisits}
+        onAddTasks={handleAddRecentTasks}
       />
     </div>
   );

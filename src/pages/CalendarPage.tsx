@@ -6,9 +6,10 @@ interface CalendarPageProps {
   visits: Visit[];
   onDateSelect: (date: string) => void;
   selectedDate: string;
+  onOpenUnscheduledTasks: () => void;
 }
 
-export const CalendarPage = ({ visits, onDateSelect, selectedDate }: CalendarPageProps) => {
+export const CalendarPage = ({ visits, onDateSelect, selectedDate, onOpenUnscheduledTasks }: CalendarPageProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -61,17 +62,25 @@ export const CalendarPage = ({ visits, onDateSelect, selectedDate }: CalendarPag
     );
   }
 
-  const selectedVisits = visits.filter((v) => v.date === selectedDate);
-
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl h-full flex flex-col">
+    <div className="container mx-auto px-4 py-6 max-w-4xl">
       <div className="flex justify-between items-center mb-4">
         <button onClick={prevMonth} className="text-slate-500 hover:text-cyan-600">
           <Icon name="fa-chevron-left" />
         </button>
-        <h2 className="text-lg font-bold text-slate-700">
-          {year}年 {month + 1}月
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-slate-700">
+            {year}年 {month + 1}月
+          </h2>
+          <button
+            onClick={onOpenUnscheduledTasks}
+            className="text-xs text-cyan-600 hover:text-cyan-800 font-semibold border border-cyan-200 bg-cyan-50 px-2 py-1 rounded flex items-center gap-1"
+            title="未定ToDo"
+          >
+            <Icon name="fa-inbox" size={12} />
+            未定ToDo
+          </button>
+        </div>
         <button onClick={nextMonth} className="text-slate-500 hover:text-cyan-600">
           <Icon name="fa-chevron-right" />
         </button>
@@ -86,20 +95,8 @@ export const CalendarPage = ({ visits, onDateSelect, selectedDate }: CalendarPag
         <div>金</div>
         <div className="text-blue-400">土</div>
       </div>
-      <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-lg overflow-hidden mb-6 shadow-sm">
+      <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
         {days}
-      </div>
-
-      <div className="flex-1 bg-white rounded-lg shadow-sm p-4 overflow-y-auto">
-        <h3 className="font-bold text-slate-700 mb-3 border-b pb-2 flex justify-between items-center">
-          <span>{new Date(selectedDate).toLocaleDateString()} の予定</span>
-          <span className="text-xs font-normal bg-slate-100 px-2 py-1 rounded text-slate-500">
-            {selectedVisits.length}件
-          </span>
-        </h3>
-        {selectedVisits.length === 0 && (
-          <p className="text-center text-slate-400 py-4 text-sm">予定はありません</p>
-        )}
       </div>
     </div>
   );
