@@ -55,8 +55,8 @@ export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: Rec
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-up max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4" onClick={(e) => { if (e.target === e.currentTarget) { setSelectedTasks(new Set()); onClose(); } }}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-up max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-slate-800 mb-1">最近のタスクから追加</h2>
         <p className="text-xs text-slate-500 mb-3">追加したいタスクを選択してください</p>
 

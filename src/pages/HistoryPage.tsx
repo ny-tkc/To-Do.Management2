@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Icon } from '@/components/Icon';
 import type { Visit, Firm } from '@/types';
 
@@ -16,6 +16,22 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
   const [dateTo, setDateTo] = useState('');
   const [keyword, setKeyword] = useState('');
   const [searchResults, setSearchResults] = useState<Visit[] | null>(null);
+  const firmContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close firm list when tapping outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (firmContainerRef.current && !firmContainerRef.current.contains(event.target as Node)) {
+        setShowFirmList(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
 
   const filteredFirms = useMemo(() => {
     if (!firmSearch) return firms;
@@ -24,12 +40,6 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
       (f) => f.name.toLowerCase().includes(q) || f.code.includes(firmSearch)
     );
   }, [firms, firmSearch]);
-
-  const selectedFirmName = useMemo(() => {
-    if (!selectedFirmId) return '';
-    const firm = firms.find((f) => f.id === selectedFirmId);
-    return firm ? `${firm.code} ${firm.name}` : '';
-  }, [selectedFirmId, firms]);
 
   const handleSelectFirm = (firm: Firm) => {
     setSelectedFirmId(firm.id);
@@ -43,6 +53,7 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
   };
 
   const handleSearch = () => {
+    setShowFirmList(false);
     let results = visits.filter((v) => v.status === 'completed');
 
     if (selectedFirmId) {
@@ -80,7 +91,7 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
 
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4 space-y-3">
         {/* Firm selection */}
-        <div className="relative">
+        <div className="relative" ref={firmContainerRef}>
           <label className="block text-xs font-medium text-slate-500 mb-1">事務所</label>
           <div className="flex gap-2">
             <input
@@ -96,7 +107,7 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
               className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
               autoComplete="off"
             />
-            {selectedFirmId && (
+            {(selectedFirmId || firmSearch) && (
               <button
                 onClick={handleClearFirm}
                 className="px-2 text-slate-400 hover:text-red-500"
@@ -124,9 +135,9 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
           )}
         </div>
 
-        {/* Date range */}
-        <div className="flex gap-2 items-end">
-          <div className="flex-1">
+        {/* Date range - stacked vertically for mobile */}
+        <div className="space-y-2">
+          <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">開始日</label>
             <input
               type="date"
@@ -135,8 +146,7 @@ export const HistoryPage = ({ visits, firms, renderVisitCards }: HistoryPageProp
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-cyan-500"
             />
           </div>
-          <span className="pb-2 text-slate-400">〜</span>
-          <div className="flex-1">
+          <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">終了日</label>
             <input
               type="date"

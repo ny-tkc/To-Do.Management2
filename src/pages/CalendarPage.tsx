@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Icon } from '@/components/Icon';
 import type { Visit } from '@/types';
 
@@ -7,10 +7,24 @@ interface CalendarPageProps {
   onDateSelect: (date: string) => void;
   selectedDate: string;
   onOpenUnscheduledTasks: () => void;
+  onDoubleClickDate: (date: string) => void;
 }
 
-export const CalendarPage = ({ visits, onDateSelect, selectedDate, onOpenUnscheduledTasks }: CalendarPageProps) => {
+export const CalendarPage = ({ visits, onDateSelect, selectedDate, onOpenUnscheduledTasks, onDoubleClickDate }: CalendarPageProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const lastTapRef = useRef<{ date: string; time: number }>({ date: '', time: 0 });
+
+  const handleDateClick = useCallback((dateStr: string) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last.date === dateStr && now - last.time < 400) {
+      onDoubleClickDate(dateStr);
+      lastTapRef.current = { date: '', time: 0 };
+    } else {
+      onDateSelect(dateStr);
+      lastTapRef.current = { date: dateStr, time: now };
+    }
+  }, [onDateSelect, onDoubleClickDate]);
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -39,7 +53,7 @@ export const CalendarPage = ({ visits, onDateSelect, selectedDate, onOpenUnsched
     days.push(
       <div
         key={day}
-        onClick={() => onDateSelect(dateStr)}
+        onClick={() => handleDateClick(dateStr)}
         className={`h-14 border border-slate-100 p-1 cursor-pointer flex flex-col items-center justify-between transition relative
           ${isSelected ? 'bg-cyan-50 border-cyan-300' : 'bg-white hover:bg-slate-50'}
           ${isToday ? 'font-bold' : ''}

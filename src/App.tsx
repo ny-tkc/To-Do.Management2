@@ -348,6 +348,10 @@ export const App = () => {
               onDateSelect={(date) => setSelectedDate(date)}
               selectedDate={selectedDate}
               onOpenUnscheduledTasks={() => setIsUnscheduledModalOpen(true)}
+              onDoubleClickDate={(date) => {
+                setSelectedDate(date);
+                setIsAddVisitModalOpen(true);
+              }}
             />
             <div className="container mx-auto px-4 max-w-4xl">
               <button
