@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 import type { FrequentTask } from '@/types';
 
@@ -16,8 +17,8 @@ export const SelectFrequentTaskModal = ({
 }: SelectFrequentTaskModalProps) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-up max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-slate-800">よくあるタスクから選択</h2>
@@ -68,6 +69,7 @@ export const SelectFrequentTaskModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
