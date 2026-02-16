@@ -126,7 +126,9 @@ export const VisitCard = ({
   };
 
   const handleDeleteTodo = (todoId: string) => {
-    const updatedTodos = visit.todos.filter((todo) => todo.id !== todoId);
+    const todo = visit.todos.find((t) => t.id === todoId);
+    if (!window.confirm(`「${todo?.text || 'このToDo'}」を削除しますか？`)) return;
+    const updatedTodos = visit.todos.filter((t) => t.id !== todoId);
     onUpdateVisit({ ...visit, todos: updatedTodos });
   };
 

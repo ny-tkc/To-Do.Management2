@@ -17,6 +17,9 @@ input[type="month"] {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  line-height: 1.5;
 }
 
 /* iOS Safe Area handling */

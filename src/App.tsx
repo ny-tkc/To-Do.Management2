@@ -141,7 +141,29 @@ export const App = () => {
   };
 
   const completeVisit = (visitId: string) => {
+    const visit = visits.find((v) => v.id === visitId);
     setVisits(visits.map((v) => (v.id === visitId ? { ...v, status: 'completed' as const } : v)));
+
+    // Sync: mark matching progress task assignments as completed
+    if (visit) {
+      const completedTodoTexts = visit.todos
+        .filter((t) => t.completed)
+        .map((t) => t.text.trim());
+      if (completedTodoTexts.length > 0) {
+        setProgressTasks((prev) =>
+          prev.map((task) => {
+            if (task.archived || !completedTodoTexts.includes(task.title)) return task;
+            return {
+              ...task,
+              assignments: task.assignments.map((a) => {
+                if (a.firmId !== visit.firmId || a.completed) return a;
+                return { ...a, completed: true, completedAt: new Date().toISOString() };
+              }),
+            };
+          })
+        );
+      }
+    }
   };
 
   const revertCompleteVisit = (visitId: string) => {
@@ -172,6 +194,8 @@ export const App = () => {
     const todo = visit.todos.find((t) => t.id === todoId);
     if (!todo) return;
 
+    if (!window.confirm(`「${todo.text}」を次回持越しリストへ移動しますか？`)) return;
+
     // Remove from current visit
     const updatedVisitTodos = visit.todos.filter((t) => t.id !== todoId);
     setVisits(visits.map((v) => (v.id === visitId ? { ...v, todos: updatedVisitTodos } : v)));
@@ -193,7 +217,6 @@ export const App = () => {
         [type]: [...(currentCarried[type as keyof typeof currentCarried] || []), newCarriedItem],
       },
     });
-    alert('ToDoを次回持越しリストへ移動しました');
   };
 
   const updateCarriedOverTodos = (firmId: string, newTodos: CarriedOverTodoItem[], isClientVisit: boolean) => {
