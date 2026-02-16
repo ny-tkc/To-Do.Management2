@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Firm, Visit, FrequentTask, CarriedOverTodos, CarriedOverTodoItem } from '@/types';
+import type { Firm, Visit, FrequentTask, CarriedOverTodos, CarriedOverTodoItem, ProgressTask, RecurringTaskTemplate, TaskCategory } from '@/types';
 
 import { Icon } from '@/components/Icon';
 import { BottomNav } from '@/components/BottomNav';
@@ -12,12 +12,14 @@ import { SimpleReportModal } from '@/components/modals/SimpleReportModal';
 import { ChangeDateModal } from '@/components/modals/ChangeDateModal';
 import { UnscheduledTasksModal } from '@/components/modals/UnscheduledTasksModal';
 import { BackupModal } from '@/components/modals/BackupModal';
+import { TaskCreateModal } from '@/components/modals/TaskCreateModal';
 
 import { TodayPage } from '@/pages/TodayPage';
 import { CalendarPage } from '@/pages/CalendarPage';
 import { RatePage } from '@/pages/RatePage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { MasterPage } from '@/pages/MasterPage';
+import { TaskProgressPage } from '@/pages/TaskProgressPage';
 
 export const App = () => {
   const [activePage, setActivePage] = useState('today');
@@ -25,6 +27,8 @@ export const App = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [frequentTasks, setFrequentTasks] = useState<FrequentTask[]>([]);
   const [carriedOverTodos, setCarriedOverTodos] = useState<CarriedOverTodos>({});
+  const [progressTasks, setProgressTasks] = useState<ProgressTask[]>([]);
+  const [recurringTemplates, setRecurringTemplates] = useState<RecurringTaskTemplate[]>([]);
 
   const [isAddFirmModalOpen, setIsAddFirmModalOpen] = useState(false);
   const [isAddVisitModalOpen, setIsAddVisitModalOpen] = useState(false);
@@ -33,6 +37,7 @@ export const App = () => {
   const [isChangeDateModalOpen, setIsChangeDateModalOpen] = useState(false);
   const [isUnscheduledModalOpen, setIsUnscheduledModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
 
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -43,11 +48,15 @@ export const App = () => {
     const loadedVisits = localStorage.getItem('visits');
     const loadedFreq = localStorage.getItem('frequentTasks');
     const loadedCarried = localStorage.getItem('carriedOverTodos');
+    const loadedProgress = localStorage.getItem('progressTasks');
+    const loadedRecurring = localStorage.getItem('recurringTemplates');
 
     if (loadedFirms) setFirms(JSON.parse(loadedFirms));
     if (loadedVisits) setVisits(JSON.parse(loadedVisits));
     if (loadedFreq) setFrequentTasks(JSON.parse(loadedFreq));
     if (loadedCarried) setCarriedOverTodos(JSON.parse(loadedCarried));
+    if (loadedProgress) setProgressTasks(JSON.parse(loadedProgress));
+    if (loadedRecurring) setRecurringTemplates(JSON.parse(loadedRecurring));
 
     // Daily backup prompt
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -64,6 +73,8 @@ export const App = () => {
   useEffect(() => { localStorage.setItem('visits', JSON.stringify(visits)); }, [visits]);
   useEffect(() => { localStorage.setItem('frequentTasks', JSON.stringify(frequentTasks)); }, [frequentTasks]);
   useEffect(() => { localStorage.setItem('carriedOverTodos', JSON.stringify(carriedOverTodos)); }, [carriedOverTodos]);
+  useEffect(() => { localStorage.setItem('progressTasks', JSON.stringify(progressTasks)); }, [progressTasks]);
+  useEffect(() => { localStorage.setItem('recurringTemplates', JSON.stringify(recurringTemplates)); }, [recurringTemplates]);
 
   // -- Handlers --
   const addFirm = (newFirm: { code: string; name: string }) => {
@@ -198,7 +209,7 @@ export const App = () => {
 
   // Master Data Handlers
   const exportData = () => {
-    const data = { firms, visits, frequentTasks, carriedOverTodos };
+    const data = { firms, visits, frequentTasks, carriedOverTodos, progressTasks, recurringTemplates };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -218,6 +229,8 @@ export const App = () => {
         if (data.visits) setVisits(data.visits);
         if (data.frequentTasks) setFrequentTasks(data.frequentTasks);
         if (data.carriedOverTodos) setCarriedOverTodos(data.carriedOverTodos);
+        if (data.progressTasks) setProgressTasks(data.progressTasks);
+        if (data.recurringTemplates) setRecurringTemplates(data.recurringTemplates);
         alert('データを復元しました');
       } catch {
         alert('データの読み込みに失敗しました');
@@ -232,6 +245,8 @@ export const App = () => {
       setVisits([]);
       setFrequentTasks([]);
       setCarriedOverTodos({});
+      setProgressTasks([]);
+      setRecurringTemplates([]);
       localStorage.clear();
       alert('データを初期化しました');
     }
@@ -286,6 +301,58 @@ export const App = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  // --- Progress Task Handlers ---
+  const createProgressTask = (data: { title: string; category: TaskCategory; deadline: string; firmIds: string[] }) => {
+    const newTask: ProgressTask = {
+      id: Date.now().toString(),
+      title: data.title,
+      category: data.category,
+      deadline: data.deadline,
+      assignments: data.firmIds.map((fid) => ({ firmId: fid, completed: false })),
+      createdAt: new Date().toISOString(),
+      archived: false,
+    };
+    setProgressTasks([newTask, ...progressTasks]);
+  };
+
+  const toggleAssignment = (taskId: string, firmId: string) => {
+    setProgressTasks(progressTasks.map((task) => {
+      if (task.id !== taskId) return task;
+      return {
+        ...task,
+        assignments: task.assignments.map((a) => {
+          if (a.firmId !== firmId) return a;
+          return {
+            ...a,
+            completed: !a.completed,
+            completedAt: !a.completed ? new Date().toISOString() : undefined,
+          };
+        }),
+      };
+    }));
+  };
+
+  const archiveProgressTask = (taskId: string) => {
+    setProgressTasks(progressTasks.map((t) => (t.id === taskId ? { ...t, archived: true } : t)));
+  };
+
+  const deleteProgressTask = (taskId: string) => {
+    setProgressTasks(progressTasks.filter((t) => t.id !== taskId));
+  };
+
+  const updateProgressTask = (updatedTask: ProgressTask) => {
+    setProgressTasks(progressTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+  };
+
+  // --- Recurring Template Handlers ---
+  const addRecurringTemplate = (tmpl: Omit<RecurringTaskTemplate, 'id'>) => {
+    setRecurringTemplates([...recurringTemplates, { ...tmpl, id: Date.now().toString() }]);
+  };
+
+  const deleteRecurringTemplate = (id: string) => {
+    setRecurringTemplates(recurringTemplates.filter((t) => t.id !== id));
   };
 
   // Pages Logic
@@ -368,6 +435,18 @@ export const App = () => {
           </>
         )}
 
+        {activePage === 'tasks' && (
+          <TaskProgressPage
+            tasks={progressTasks}
+            firms={firms}
+            onToggleAssignment={toggleAssignment}
+            onArchiveTask={archiveProgressTask}
+            onDeleteTask={deleteProgressTask}
+            onUpdateTask={updateProgressTask}
+            onOpenCreateModal={() => setIsTaskCreateModalOpen(true)}
+          />
+        )}
+
         {activePage === 'rate' && <RatePage firms={firms} visits={visits} />}
 
         {activePage === 'history' && (
@@ -391,6 +470,9 @@ export const App = () => {
             onDeleteFrequentTask={deleteFrequentTask}
             onExportFirms={exportFirmsOnly}
             onImportFirms={importFirmsOnly}
+            recurringTemplates={recurringTemplates}
+            onAddRecurringTemplate={addRecurringTemplate}
+            onDeleteRecurringTemplate={deleteRecurringTemplate}
           />
         )}
       </main>
@@ -412,6 +494,7 @@ export const App = () => {
         carriedOverTodos={carriedOverTodos}
         frequentTasks={frequentTasks}
         allVisits={visits}
+        progressTasks={progressTasks}
       />
 
       <ReportModal
@@ -447,6 +530,14 @@ export const App = () => {
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         onBackup={exportData}
+      />
+
+      <TaskCreateModal
+        isOpen={isTaskCreateModalOpen}
+        onClose={() => setIsTaskCreateModalOpen(false)}
+        firms={firms}
+        recurringTemplates={recurringTemplates}
+        onCreateTask={createProgressTask}
       />
     </div>
   );

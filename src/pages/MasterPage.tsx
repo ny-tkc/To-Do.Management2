@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Icon } from '@/components/Icon';
-import type { Firm, FrequentTask } from '@/types';
+import type { Firm, FrequentTask, RecurringTaskTemplate, TaskCategory } from '@/types';
 
 interface MasterPageProps {
   firms: Firm[];
@@ -14,6 +14,9 @@ interface MasterPageProps {
   onDeleteFrequentTask: (id: string) => void;
   onExportFirms: () => void;
   onImportFirms: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  recurringTemplates: RecurringTaskTemplate[];
+  onAddRecurringTemplate: (tmpl: Omit<RecurringTaskTemplate, 'id'>) => void;
+  onDeleteRecurringTemplate: (id: string) => void;
 }
 
 export const MasterPage = ({
@@ -28,6 +31,9 @@ export const MasterPage = ({
   onDeleteFrequentTask,
   onExportFirms,
   onImportFirms,
+  recurringTemplates,
+  onAddRecurringTemplate,
+  onDeleteRecurringTemplate,
 }: MasterPageProps) => {
   const [activeTab, setActiveTab] = useState('firms');
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +42,11 @@ export const MasterPage = ({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTaskText, setEditTaskText] = useState('');
   const [editTaskDefaults, setEditTaskDefaults] = useState('');
+
+  // Recurring template state
+  const [newRecTitle, setNewRecTitle] = useState('');
+  const [newRecCategory, setNewRecCategory] = useState<TaskCategory>('その他');
+  const [newRecMonth, setNewRecMonth] = useState(1);
 
   const handleImportClick = () => {
     if (importInputRef.current) importInputRef.current.click();
@@ -64,6 +75,15 @@ export const MasterPage = ({
     setEditingTaskId(null);
     setEditTaskText('');
     setEditTaskDefaults('');
+  };
+
+  const handleAddRecurring = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRecTitle.trim()) return;
+    onAddRecurringTemplate({ title: newRecTitle.trim(), category: newRecCategory, triggerMonth: newRecMonth });
+    setNewRecTitle('');
+    setNewRecCategory('その他');
+    setNewRecMonth(1);
   };
 
   const saveEditingTask = () => {
@@ -100,6 +120,16 @@ export const MasterPage = ({
           }`}
         >
           よくあるタスク
+        </button>
+        <button
+          onClick={() => setActiveTab('recurring')}
+          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+            activeTab === 'recurring'
+              ? 'bg-white shadow text-slate-900'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          定期タスク
         </button>
       </div>
 
@@ -272,6 +302,107 @@ export const MasterPage = ({
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'recurring' && (
+        <div className="animate-fade-in-up">
+          <h2 className="text-xl font-bold text-slate-800 mb-4">定期タスクテンプレート</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            毎年発生する定期タスクのテンプレートを登録しておくと、タスク作成時に簡単に呼び出せます。
+          </p>
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+            <form onSubmit={handleAddRecurring} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">発生時期（月）</label>
+                  <select
+                    value={newRecMonth}
+                    onChange={(e) => setNewRecMonth(parseInt(e.target.value))}
+                    className="w-full border border-slate-300 p-2 rounded-md text-sm"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <option key={m} value={m}>{m}月</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">区分</label>
+                  <select
+                    value={newRecCategory}
+                    onChange={(e) => setNewRecCategory(e.target.value as TaskCategory)}
+                    className="w-full border border-slate-300 p-2 rounded-md text-sm"
+                  >
+                    <option value="研修">研修</option>
+                    <option value="TPS">TPS</option>
+                    <option value="その他">その他</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">タスク名</label>
+                <input
+                  type="text"
+                  value={newRecTitle}
+                  onChange={(e) => setNewRecTitle(e.target.value)}
+                  placeholder="例: 年末調整資料配布"
+                  className="w-full border border-slate-300 p-2 rounded-md text-sm"
+                  required
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 font-bold text-sm"
+                >
+                  追加
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-3">
+            {recurringTemplates.length > 0 ? (
+              [...recurringTemplates]
+                .sort((a, b) => a.triggerMonth - b.triggerMonth)
+                .map((tmpl) => (
+                  <div
+                    key={tmpl.id}
+                    className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="bg-cyan-50 text-cyan-700 text-xs font-bold px-2 py-1 rounded flex-shrink-0">
+                        {tmpl.triggerMonth}月
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${
+                        tmpl.category === '研修'
+                          ? 'bg-blue-100 text-blue-700'
+                          : tmpl.category === 'TPS'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {tmpl.category}
+                      </span>
+                      <span className="font-bold text-slate-800 truncate">{tmpl.title}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('このテンプレートを削除しますか？')) {
+                          onDeleteRecurringTemplate(tmpl.id);
+                        }
+                      }}
+                      className="text-slate-400 hover:text-red-500 transition ml-2 flex-shrink-0"
+                    >
+                      <Icon name="fa-trash-alt" size={16} />
+                    </button>
+                  </div>
+                ))
+            ) : (
+              <div className="text-center py-8 bg-white rounded-lg border-2 border-dashed border-slate-300">
+                <p className="text-slate-500 text-sm">テンプレートが登録されていません</p>
+              </div>
+            )}
           </div>
         </div>
       )}

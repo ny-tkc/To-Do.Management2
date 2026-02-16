@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '@/components/Icon';
 import { SelectFrequentTaskModal } from './SelectFrequentTaskModal';
 import { RecentTasksModal } from './RecentTasksModal';
-import type { Firm, FrequentTask, CarriedOverTodos, Visit } from '@/types';
+import type { Firm, FrequentTask, CarriedOverTodos, Visit, ProgressTask } from '@/types';
 
 interface AddVisitModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ interface AddVisitModalProps {
   carriedOverTodos: CarriedOverTodos;
   frequentTasks: FrequentTask[];
   allVisits: Visit[];
+  progressTasks?: ProgressTask[];
 }
 
 export const AddVisitModal = ({
@@ -29,6 +30,7 @@ export const AddVisitModal = ({
   carriedOverTodos,
   frequentTasks,
   allVisits,
+  progressTasks = [],
 }: AddVisitModalProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFirm, setSelectedFirm] = useState<Firm | null>(null);
@@ -189,6 +191,30 @@ export const AddVisitModal = ({
     }
   };
 
+  // Get pending progress tasks for the selected firm
+  const pendingProgressTasks = useMemo(() => {
+    if (!selectedFirm) return [];
+    return progressTasks
+      .filter((task) => !task.archived)
+      .filter((task) =>
+        task.assignments.some((a) => a.firmId === selectedFirm.id && !a.completed)
+      )
+      .map((task) => task.title);
+  }, [selectedFirm, progressTasks]);
+
+  const handleAddProgressTaskAsTodo = (title: string) => {
+    const exists = todos.some((t) => t.text === title);
+    if (exists) return;
+    const emptyIndex = todos.findIndex((t) => t.text.trim() === '');
+    if (emptyIndex !== -1) {
+      const newTodos = [...todos];
+      newTodos[emptyIndex] = { text: title, subTasks: [] };
+      setTodos(newTodos);
+    } else {
+      setTodos([...todos, { text: title, subTasks: [] }]);
+    }
+  };
+
   const canSubmit = selectedFirm && date;
 
   return (
@@ -241,6 +267,40 @@ export const AddVisitModal = ({
               関与先訪問（顧客面談）
             </label>
           </div>
+
+          {pendingProgressTasks.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs font-bold text-amber-800 mb-2">
+                <Icon name="fa-exclamation-circle" className="mr-1" size={12} />
+                未完了の進捗タスク ({pendingProgressTasks.length}件)
+              </p>
+              <div className="space-y-1">
+                {pendingProgressTasks.map((title, i) => {
+                  const alreadyAdded = todos.some((t) => t.text === title);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleAddProgressTaskAsTodo(title)}
+                      disabled={alreadyAdded}
+                      className={`w-full text-left text-sm px-3 py-2 rounded-md flex items-center justify-between transition ${
+                        alreadyAdded
+                          ? 'bg-green-50 text-green-700 border border-green-200'
+                          : 'bg-white text-slate-700 border border-amber-200 hover:bg-amber-100'
+                      }`}
+                    >
+                      <span className="truncate">{title}</span>
+                      {alreadyAdded ? (
+                        <Icon name="fa-check" size={12} className="text-green-500 flex-shrink-0 ml-2" />
+                      ) : (
+                        <Icon name="fa-plus" size={12} className="text-amber-600 flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="flex justify-between items-end mb-1">

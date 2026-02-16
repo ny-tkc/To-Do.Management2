@@ -61,3 +61,30 @@ export interface Alert {
   daysSince: number;
   lastVisitDate: string;
 }
+
+// --- タスク進捗管理 ---
+
+export type TaskCategory = '研修' | 'TPS' | 'その他';
+
+export interface TaskAssignment {
+  firmId: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface ProgressTask {
+  id: string;
+  title: string;
+  category: TaskCategory;
+  deadline: string;
+  assignments: TaskAssignment[];
+  createdAt: string;
+  archived: boolean;
+}
+
+export interface RecurringTaskTemplate {
+  id: string;
+  title: string;
+  category: TaskCategory;
+  triggerMonth: number;
+}
