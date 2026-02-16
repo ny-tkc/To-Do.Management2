@@ -142,35 +142,33 @@ export const TaskCreateModal = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full border border-slate-300 rounded-md p-2.5 text-sm focus:ring-cyan-500 focus:border-cyan-500"
-              placeholder="例: 年末調整資料配布"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">区分</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as TaskCategory)}
-                className="w-full border border-slate-300 rounded-md p-2.5 text-sm focus:ring-cyan-500 focus:border-cyan-500"
-              >
-                <option value="研修">研修</option>
-                <option value="TPS">TPS</option>
-                <option value="その他">その他</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                期限 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full border border-slate-300 rounded-md p-2.5 text-sm focus:ring-cyan-500 focus:border-cyan-500"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">区分</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as TaskCategory)}
+              className="w-full border border-slate-300 rounded-md p-2.5 text-sm focus:ring-cyan-500 focus:border-cyan-500"
+            >
+              <option value="研修">研修</option>
+              <option value="TPS">TPS</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              期限 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              required
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full border border-slate-300 rounded-md p-2.5 text-sm focus:ring-cyan-500 focus:border-cyan-500"
+            />
           </div>
 
           {/* Firm Selection */}

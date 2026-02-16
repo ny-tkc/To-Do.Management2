@@ -338,6 +338,25 @@ export const App = () => {
     setProgressTasks(progressTasks.map((t) => (t.id === taskId ? { ...t, archived: true } : t)));
   };
 
+  const unarchiveProgressTask = (taskId: string) => {
+    setProgressTasks(progressTasks.map((t) => (t.id === taskId ? { ...t, archived: false } : t)));
+  };
+
+  const addAssignmentToTask = (taskId: string, firmId: string) => {
+    setProgressTasks(progressTasks.map((t) => {
+      if (t.id !== taskId) return t;
+      if (t.assignments.some((a) => a.firmId === firmId)) return t;
+      return { ...t, assignments: [...t.assignments, { firmId, completed: false }] };
+    }));
+  };
+
+  const removeAssignmentFromTask = (taskId: string, firmId: string) => {
+    setProgressTasks(progressTasks.map((t) => {
+      if (t.id !== taskId) return t;
+      return { ...t, assignments: t.assignments.filter((a) => a.firmId !== firmId) };
+    }));
+  };
+
   const deleteProgressTask = (taskId: string) => {
     setProgressTasks(progressTasks.filter((t) => t.id !== taskId));
   };
@@ -441,9 +460,12 @@ export const App = () => {
             firms={firms}
             onToggleAssignment={toggleAssignment}
             onArchiveTask={archiveProgressTask}
+            onUnarchiveTask={unarchiveProgressTask}
             onDeleteTask={deleteProgressTask}
             onUpdateTask={updateProgressTask}
             onOpenCreateModal={() => setIsTaskCreateModalOpen(true)}
+            onAddAssignment={addAssignmentToTask}
+            onRemoveAssignment={removeAssignmentFromTask}
           />
         )}
 

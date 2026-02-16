@@ -8,9 +8,12 @@ interface TaskProgressPageProps {
   firms: Firm[];
   onToggleAssignment: (taskId: string, firmId: string) => void;
   onArchiveTask: (taskId: string) => void;
+  onUnarchiveTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
   onUpdateTask: (task: ProgressTask) => void;
   onOpenCreateModal: () => void;
+  onAddAssignment: (taskId: string, firmId: string) => void;
+  onRemoveAssignment: (taskId: string, firmId: string) => void;
 }
 
 export const TaskProgressPage = ({
@@ -18,21 +21,26 @@ export const TaskProgressPage = ({
   firms,
   onToggleAssignment,
   onArchiveTask,
+  onUnarchiveTask,
   onDeleteTask,
   onUpdateTask,
   onOpenCreateModal,
+  onAddAssignment,
+  onRemoveAssignment,
 }: TaskProgressPageProps) => {
   const [view, setView] = useState<'list' | 'detail'>('list');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | TaskCategory>('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
 
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editCategory, setEditCategory] = useState<TaskCategory>('その他');
   const [editDeadline, setEditDeadline] = useState('');
+
+  // Add firm state
+  const [showAddFirm, setShowAddFirm] = useState(false);
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId);
 
@@ -57,17 +65,47 @@ export const TaskProgressPage = ({
     );
   };
 
+  const getAlertBadge = (deadline: string, archived: boolean, isAllComplete: boolean) => {
+    if (archived || isAllComplete) return null;
+    const days = getDaysUntil(deadline);
+    if (days <= 0) {
+      return (
+        <span className="text-xs px-2 py-0.5 rounded bg-red-600 text-white font-bold animate-pulse">
+          <Icon name="fa-exclamation-triangle" size={10} className="mr-1" />
+          期限超過
+        </span>
+      );
+    }
+    if (days <= 3) {
+      return (
+        <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 font-bold">
+          <Icon name="fa-exclamation-circle" size={10} className="mr-1" />
+          あと{days}日
+        </span>
+      );
+    }
+    if (days <= 10) {
+      return (
+        <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+          あと{days}日
+        </span>
+      );
+    }
+    return null;
+  };
+
   const openDetail = (taskId: string) => {
     setSelectedTaskId(taskId);
     setView('detail');
-    setSearchTerm('');
     setIsEditing(false);
+    setShowAddFirm(false);
   };
 
   const backToList = () => {
     setView('list');
     setSelectedTaskId(null);
     setIsEditing(false);
+    setShowAddFirm(false);
   };
 
   const startEdit = () => {
@@ -155,16 +193,17 @@ export const TaskProgressPage = ({
             const completedCount = task.assignments.filter((a) => a.completed).length;
             const total = task.assignments.length;
             const isAllComplete = total > 0 && completedCount === total;
-            const daysUntil = getDaysUntil(task.deadline);
-            const isUrgent = !task.archived && !isAllComplete && daysUntil <= 7;
+            const alertBadge = getAlertBadge(task.deadline, task.archived, isAllComplete);
 
             return (
               <button
                 key={task.id}
                 onClick={() => openDetail(task.id)}
                 className={`w-full text-left bg-white p-4 rounded-lg border transition hover:shadow-md ${
-                  isUrgent
-                    ? 'border-red-200'
+                  alertBadge && getDaysUntil(task.deadline) <= 0
+                    ? 'border-red-300 bg-red-50/30'
+                    : alertBadge
+                    ? 'border-amber-200'
                     : isAllComplete && !task.archived
                     ? 'border-green-200 bg-green-50/30'
                     : 'border-slate-200'
@@ -183,11 +222,7 @@ export const TaskProgressPage = ({
                     >
                       {task.category}
                     </span>
-                    {isUrgent && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">
-                        {daysUntil <= 0 ? '期限超過' : `あと${daysUntil}日`}
-                      </span>
-                    )}
+                    {alertBadge}
                     {task.archived && (
                       <span className="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600">
                         完了済み
@@ -227,20 +262,19 @@ export const TaskProgressPage = ({
   const completedCount = selectedTask.assignments.filter((a) => a.completed).length;
   const total = selectedTask.assignments.length;
   const isAllComplete = total > 0 && completedCount === total;
+  const alertBadge = getAlertBadge(selectedTask.deadline, selectedTask.archived, isAllComplete);
 
-  const filteredAssignments = selectedTask.assignments
-    .filter((a) => {
-      const firm = firms.find((f) => f.id === a.firmId);
-      if (!firm) return false;
-      const q = searchTerm.toLowerCase();
-      return firm.name.toLowerCase().includes(q) || firm.code.includes(q);
-    })
-    .sort((a, b) => {
-      if (a.completed !== b.completed) return a.completed ? 1 : -1;
-      const fA = firms.find((f) => f.id === a.firmId);
-      const fB = firms.find((f) => f.id === b.firmId);
-      return (fA?.code || '').localeCompare(fB?.code || '');
-    });
+  const sortedAssignments = [...selectedTask.assignments].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    const fA = firms.find((f) => f.id === a.firmId);
+    const fB = firms.find((f) => f.id === b.firmId);
+    return (fA?.code || '').localeCompare(fB?.code || '');
+  });
+
+  // Firms not yet assigned
+  const unassignedFirms = firms.filter(
+    (f) => !selectedTask.assignments.some((a) => a.firmId === f.id)
+  );
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-4xl">
@@ -295,7 +329,7 @@ export const TaskProgressPage = ({
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span
                 className={`text-xs px-2 py-0.5 rounded font-medium ${
                   selectedTask.category === '研修'
@@ -312,6 +346,7 @@ export const TaskProgressPage = ({
                   完了済み
                 </span>
               )}
+              {alertBadge}
             </div>
             <h2 className="text-xl font-bold text-slate-800 mb-1">{selectedTask.title}</h2>
             <p className="text-sm text-slate-500 mb-4">
@@ -323,7 +358,7 @@ export const TaskProgressPage = ({
 
         {/* Action buttons */}
         {!isEditing && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 flex-wrap">
             {!selectedTask.archived && (
               <button
                 onClick={startEdit}
@@ -340,6 +375,15 @@ export const TaskProgressPage = ({
               >
                 <Icon name="fa-check-circle" size={12} className="mr-1" />
                 完了にする
+              </button>
+            )}
+            {selectedTask.archived && (
+              <button
+                onClick={() => onUnarchiveTask(selectedTask.id)}
+                className="flex items-center px-3 py-1.5 text-sm text-amber-700 bg-amber-50 rounded-md hover:bg-amber-100 transition border border-amber-200"
+              >
+                <Icon name="fa-undo" size={12} className="mr-1" />
+                完了を取消
               </button>
             )}
             <button
@@ -373,57 +417,102 @@ export const TaskProgressPage = ({
       <div className="bg-white rounded-lg shadow-sm p-5">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-slate-800">進捗チェックリスト</h3>
-          <div className="relative">
-            <Icon
-              name="fa-search"
-              size={14}
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="text"
-              placeholder="事務所を検索..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500/20 w-48"
-            />
-          </div>
+          {!selectedTask.archived && (
+            <button
+              onClick={() => setShowAddFirm(!showAddFirm)}
+              className={`flex items-center text-xs px-3 py-1.5 rounded-md font-medium transition ${
+                showAddFirm
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Icon name={showAddFirm ? 'fa-times' : 'fa-plus'} size={11} className="mr-1" />
+              {showAddFirm ? '閉じる' : '事務所追加'}
+            </button>
+          )}
         </div>
 
+        {/* Add firm panel */}
+        {showAddFirm && unassignedFirms.length > 0 && (
+          <div className="mb-4 bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+            <p className="text-xs text-cyan-800 font-medium mb-2">追加する事務所を選択</p>
+            <div className="max-h-32 overflow-y-auto space-y-1">
+              {unassignedFirms.map((firm) => (
+                <button
+                  key={firm.id}
+                  onClick={() => onAddAssignment(selectedTask.id, firm.id)}
+                  className="w-full text-left flex items-center justify-between px-3 py-2 bg-white border border-cyan-200 rounded-md hover:bg-cyan-100 transition text-sm"
+                >
+                  <span className="truncate">
+                    <span className="font-mono text-slate-400 mr-1">{firm.code}</span>
+                    {firm.name}
+                  </span>
+                  <Icon name="fa-plus" size={12} className="text-cyan-600 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {showAddFirm && unassignedFirms.length === 0 && (
+          <div className="mb-4 bg-slate-50 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-500">全ての事務所が追加済みです</p>
+          </div>
+        )}
+
         <div className="space-y-2">
-          {filteredAssignments.length === 0 && (
-            <p className="text-center text-slate-400 py-8 text-sm">該当する事務所がありません</p>
+          {sortedAssignments.length === 0 && (
+            <p className="text-center text-slate-400 py-8 text-sm">事務所が割り当てられていません</p>
           )}
-          {filteredAssignments.map((assignment) => (
-            <button
+          {sortedAssignments.map((assignment) => (
+            <div
               key={assignment.firmId}
-              onClick={() => !selectedTask.archived && onToggleAssignment(selectedTask.id, assignment.firmId)}
-              disabled={selectedTask.archived}
-              className={`w-full text-left flex items-center justify-between p-3 rounded-lg border transition select-none ${
+              className={`flex items-center justify-between p-3 rounded-lg border transition select-none ${
                 assignment.completed
                   ? 'bg-slate-50 border-slate-200 opacity-75'
                   : 'bg-white border-slate-200 hover:border-cyan-400 hover:shadow-sm'
-              } ${selectedTask.archived ? 'cursor-default' : 'cursor-pointer'}`}
+              }`}
             >
-              <div className="min-w-0 pr-3">
-                <p className="text-xs text-slate-400 font-mono">{getFirmCode(assignment.firmId)}</p>
-                <p
-                  className={`font-medium truncate ${
-                    assignment.completed ? 'text-slate-500 line-through' : 'text-slate-800'
-                  }`}
-                >
-                  {getFirmName(assignment.firmId)}
-                </p>
-              </div>
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center border flex-shrink-0 transition ${
-                  assignment.completed
-                    ? 'bg-green-500 border-green-500 text-white'
-                    : 'border-slate-300'
+              <button
+                onClick={() => !selectedTask.archived && onToggleAssignment(selectedTask.id, assignment.firmId)}
+                disabled={selectedTask.archived}
+                className={`flex-1 text-left flex items-center min-w-0 pr-3 ${
+                  selectedTask.archived ? 'cursor-default' : 'cursor-pointer'
                 }`}
               >
-                {assignment.completed && <Icon name="fa-check" size={12} />}
-              </div>
-            </button>
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center border flex-shrink-0 transition mr-3 ${
+                    assignment.completed
+                      ? 'bg-green-500 border-green-500 text-white'
+                      : 'border-slate-300'
+                  }`}
+                >
+                  {assignment.completed && <Icon name="fa-check" size={12} />}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400 font-mono">{getFirmCode(assignment.firmId)}</p>
+                  <p
+                    className={`font-medium truncate ${
+                      assignment.completed ? 'text-slate-500 line-through' : 'text-slate-800'
+                    }`}
+                  >
+                    {getFirmName(assignment.firmId)}
+                  </p>
+                </div>
+              </button>
+              {!selectedTask.archived && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`${getFirmName(assignment.firmId)} をこのタスクから除外しますか？`)) {
+                      onRemoveAssignment(selectedTask.id, assignment.firmId);
+                    }
+                  }}
+                  className="text-slate-300 hover:text-red-500 transition flex-shrink-0 p-1"
+                  title="除外"
+                >
+                  <Icon name="fa-times" size={14} />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
