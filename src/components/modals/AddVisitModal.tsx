@@ -118,6 +118,22 @@ export const AddVisitModal = ({
     return pastTaskNames.filter((name) => name.toLowerCase().includes(lower) && name !== text).slice(0, 5);
   };
 
+  // Get pending progress tasks for the selected firm
+  const pendingProgressTasks = useMemo(() => {
+    if (!selectedFirm || !progressTasks || progressTasks.length === 0) return [];
+    try {
+      return progressTasks
+        .filter((task) => task && !task.archived && Array.isArray(task.assignments))
+        .filter((task) =>
+          task.assignments.some((a) => a.firmId === selectedFirm.id && !a.completed)
+        )
+        .map((task) => task.title);
+    } catch {
+      console.error('Error filtering progress tasks');
+      return [];
+    }
+  }, [selectedFirm, progressTasks]);
+
   if (!isOpen) return null;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,22 +215,6 @@ export const AddVisitModal = ({
       onClose();
     }
   };
-
-  // Get pending progress tasks for the selected firm
-  const pendingProgressTasks = useMemo(() => {
-    if (!selectedFirm || !progressTasks || progressTasks.length === 0) return [];
-    try {
-      return progressTasks
-        .filter((task) => task && !task.archived && Array.isArray(task.assignments))
-        .filter((task) =>
-          task.assignments.some((a) => a.firmId === selectedFirm.id && !a.completed)
-        )
-        .map((task) => task.title);
-    } catch {
-      console.error('Error filtering progress tasks');
-      return [];
-    }
-  }, [selectedFirm, progressTasks]);
 
   const handleAddProgressTaskAsTodo = (title: string) => {
     const exists = todos.some((t) => t.text === title);
