@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Icon } from '@/components/Icon';
+import { createPortal } from 'react-dom';
 import type { Visit } from '@/types';
 
 interface ChangeDateModalProps {
@@ -18,6 +18,13 @@ export const ChangeDateModal = ({ isOpen, onClose, visit, onSave }: ChangeDateMo
     }
   }, [isOpen, visit]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
   if (!isOpen || !visit) return null;
 
   const handleSave = () => {
@@ -27,11 +34,18 @@ export const ChangeDateModal = ({ isOpen, onClose, visit, onSave }: ChangeDateMo
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in-up">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex justify-center items-center"
+      style={{ touchAction: 'none' }}
+    >
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-[calc(100%-2rem)] max-w-sm mx-4 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 className="text-lg font-bold text-slate-800 mb-4">訪問日程の変更</h2>
-        <p className="text-sm text-slate-600 mb-4">「{visit.firmName}」の訪問日を変更します。</p>
+        <p className="text-sm text-slate-600 mb-4">{visit.firmName} の訪問日を変更します。</p>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-slate-700 mb-1">新しい日付</label>
@@ -39,7 +53,7 @@ export const ChangeDateModal = ({ isOpen, onClose, visit, onSave }: ChangeDateMo
             type="date"
             value={newDate}
             onChange={(e) => setNewDate(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-cyan-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-cyan-500 text-base"
           />
         </div>
 
@@ -58,6 +72,7 @@ export const ChangeDateModal = ({ isOpen, onClose, visit, onSave }: ChangeDateMo
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

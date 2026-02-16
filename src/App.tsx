@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Firm, Visit, FrequentTask, CarriedOverTodos, CarriedOverTodoItem, ProgressTask, RecurringTaskTemplate, TaskCategory } from '@/types';
+import { getTodayJST } from '@/utils/date';
 
 import { Icon } from '@/components/Icon';
 import { BottomNav } from '@/components/BottomNav';
@@ -40,7 +41,7 @@ export const App = () => {
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
 
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(getTodayJST());
 
   // Initialize Data
   useEffect(() => {
@@ -59,7 +60,7 @@ export const App = () => {
     if (loadedRecurring) setRecurringTemplates(JSON.parse(loadedRecurring));
 
     // Daily backup prompt
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getTodayJST();
     const lastBackupPrompt = localStorage.getItem('lastBackupPromptDate');
     if (lastBackupPrompt !== todayStr) {
       localStorage.setItem('lastBackupPromptDate', todayStr);
@@ -376,7 +377,7 @@ export const App = () => {
 
   // Pages Logic
   const getTodayVisits = () => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getTodayJST();
     return visits.filter((v) => v.date === todayStr);
   };
 
@@ -420,7 +421,7 @@ export const App = () => {
           <TodayPage
             visits={renderVisitCards(getTodayVisits())}
             onAddVisit={() => {
-              setSelectedDate(new Date().toISOString().slice(0, 10));
+              setSelectedDate(getTodayJST());
               setIsAddVisitModalOpen(true);
             }}
             today={new Date()}

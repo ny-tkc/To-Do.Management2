@@ -24,7 +24,13 @@ export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: Rec
   const recentTasks = useMemo(() => {
     if (!isOpen) return [];
     const taskMap = new Map<string, { text: string; subTasks: { text: string }[]; date: string }>();
-    const sorted = [...allVisits].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Only include visits from the last 2 weeks
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const cutoffStr = twoWeeksAgo.toISOString().slice(0, 10);
+    const sorted = [...allVisits]
+      .filter((v) => v.date >= cutoffStr)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     for (const visit of sorted) {
       for (const todo of visit.todos) {
         const key = todo.text.trim();
@@ -37,7 +43,7 @@ export const RecentTasksModal = ({ isOpen, onClose, allVisits, onAddTasks }: Rec
         }
       }
     }
-    return Array.from(taskMap.values()).slice(0, 30);
+    return Array.from(taskMap.values());
   }, [isOpen, allVisits]);
 
   if (!isOpen) return null;

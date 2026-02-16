@@ -295,11 +295,11 @@ export const TaskProgressPage = ({
               onChange={(e) => setEditTitle(e.target.value)}
               className="w-full text-lg font-bold border border-slate-300 rounded-md p-2 focus:ring-cyan-500 focus:border-cyan-500"
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <select
                 value={editCategory}
                 onChange={(e) => setEditCategory(e.target.value as TaskCategory)}
-                className="text-sm border border-slate-300 rounded-md p-2 focus:ring-cyan-500"
+                className="text-sm border border-slate-300 rounded-md p-2 focus:ring-cyan-500 min-w-0 flex-1"
               >
                 <option value="研修">研修</option>
                 <option value="TPS">TPS</option>
@@ -309,7 +309,7 @@ export const TaskProgressPage = ({
                 type="date"
                 value={editDeadline}
                 onChange={(e) => setEditDeadline(e.target.value)}
-                className="text-sm border border-slate-300 rounded-md p-2 focus:ring-cyan-500"
+                className="text-sm border border-slate-300 rounded-md p-2 focus:ring-cyan-500 min-w-0 flex-shrink"
               />
             </div>
             <div className="flex justify-end gap-2">

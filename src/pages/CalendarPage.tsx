@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { Icon } from '@/components/Icon';
+import { getTodayJST } from '@/utils/date';
 import type { Visit } from '@/types';
 
 interface CalendarPageProps {
@@ -45,7 +46,7 @@ export const CalendarPage = ({ visits, onDateSelect, selectedDate, onOpenUnsched
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayVisits = visits.filter((v) => v.date === dateStr);
     const isSelected = selectedDate === dateStr;
-    const isToday = dateStr === new Date().toISOString().slice(0, 10);
+    const isToday = dateStr === getTodayJST();
 
     const pendingCount = dayVisits.filter((v) => v.status === 'pending').length;
     const completedCount = dayVisits.filter((v) => v.status === 'completed').length;

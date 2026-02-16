@@ -9,6 +9,16 @@ select {
   font-size: 16px !important;
 }
 
+/* Fix date/month inputs overflowing on iOS Safari */
+input[type="date"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 /* iOS Safe Area handling */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);

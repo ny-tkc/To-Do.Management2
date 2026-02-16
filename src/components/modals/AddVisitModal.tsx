@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 import { SelectFrequentTaskModal } from './SelectFrequentTaskModal';
 import { RecentTasksModal } from './RecentTasksModal';
@@ -54,6 +55,14 @@ export const AddVisitModal = ({
     }
     return Array.from(names);
   }, [allVisits]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -217,9 +226,18 @@ export const AddVisitModal = ({
 
   const canSubmit = selectedFirm && date;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-up max-h-[90vh] overflow-y-auto">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex justify-center items-center"
+      style={{ touchAction: 'none' }}
+    >
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-[calc(100%-2rem)] max-w-md mx-4 flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - 4rem)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 overflow-y-auto overscroll-contain flex-1">
         <h2 className="text-xl font-bold text-slate-800 mb-2">訪問予定の追加</h2>
         <p className="text-slate-500 mb-4 font-semibold">{date}</p>
 
@@ -438,7 +456,9 @@ export const AddVisitModal = ({
           allVisits={allVisits}
           onAddTasks={handleAddRecentTasks}
         />
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

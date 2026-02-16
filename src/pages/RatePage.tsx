@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/Icon';
 import { ProgressBar } from '@/components/ProgressBar';
 import { AlertModal } from '@/components/modals/AlertModal';
+import { getTodayJST, getCurrentMonthJST } from '@/utils/date';
 import type { Firm, Visit, Alert } from '@/types';
 
 interface StatCardProps {
@@ -29,7 +30,7 @@ interface RatePageProps {
 }
 
 export const RatePage = ({ firms, visits }: RatePageProps) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [currentMonth, setCurrentMonth] = useState(getCurrentMonthJST());
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Record<string, number>>({});
 
@@ -167,13 +168,13 @@ export const RatePage = ({ firms, visits }: RatePageProps) => {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-4xl">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold text-slate-700">{`${year}年 ${month}月`}の進捗</h2>
+      <div className="flex justify-between items-center mb-4 gap-2">
+        <h2 className="text-lg font-bold text-slate-700 flex-shrink-0">{`${year}年 ${month}月`}の進捗</h2>
         <input
           type="month"
           value={currentMonth}
           onChange={(e) => setCurrentMonth(e.target.value)}
-          className="px-3 py-1.5 border border-slate-300 rounded-md"
+          className="px-3 py-1.5 border border-slate-300 rounded-md text-base flex-shrink min-w-0"
         />
       </div>
       <div className="grid grid-cols-2 gap-4 mb-6">
