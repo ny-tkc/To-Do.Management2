@@ -446,7 +446,7 @@ export const App = () => {
                 className="w-full py-3 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 border-2 border-dashed border-slate-300 font-bold mt-4"
               >
                 <Icon name="fa-plus" className="mr-2" />
-                {new Date(selectedDate).toLocaleDateString()} に訪問を追加
+                {selectedDate} に訪問を追加
               </button>
               <div className="space-y-4 py-4">
                 {renderVisitCards(visits.filter((v) => v.date === selectedDate))}

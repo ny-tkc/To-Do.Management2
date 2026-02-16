@@ -202,13 +202,18 @@ export const AddVisitModal = ({
 
   // Get pending progress tasks for the selected firm
   const pendingProgressTasks = useMemo(() => {
-    if (!selectedFirm) return [];
-    return progressTasks
-      .filter((task) => !task.archived)
-      .filter((task) =>
-        task.assignments.some((a) => a.firmId === selectedFirm.id && !a.completed)
-      )
-      .map((task) => task.title);
+    if (!selectedFirm || !progressTasks || progressTasks.length === 0) return [];
+    try {
+      return progressTasks
+        .filter((task) => task && !task.archived && Array.isArray(task.assignments))
+        .filter((task) =>
+          task.assignments.some((a) => a.firmId === selectedFirm.id && !a.completed)
+        )
+        .map((task) => task.title);
+    } catch {
+      console.error('Error filtering progress tasks');
+      return [];
+    }
   }, [selectedFirm, progressTasks]);
 
   const handleAddProgressTaskAsTodo = (title: string) => {
